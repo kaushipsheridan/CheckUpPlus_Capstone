@@ -1,4 +1,4 @@
-# CheckUpPlus_C
+# CheckUpPlus_Capstone
 apstone
 
 A new Flutter project.
