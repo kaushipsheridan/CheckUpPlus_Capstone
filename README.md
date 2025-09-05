@@ -1,17 +1,42 @@
-# CheckUpPlus_Capstone
-apstone
+# Capstone Project – Environment Setup Report
 
-A new Flutter project.
+## 1. Introduction
+This document outlines the steps completed for the initial environment setup of the Capstone Project. The goal of this phase was to establish a fully functional Flutter development environment capable of running the application across Android, iOS, and Web platforms.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 2. Tools and Technologies Installed
 
-A few resources to get you started if this is your first Flutter project:
+### Android Studio
+- Installed Android Studio IDE.  
+- Configured Android SDKs and created an Android Virtual Device (AVD) emulator.  
+- Verified emulator functionality by executing a test Android project.  
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### Visual Studio Code (VS Code)
+- Installed VS Code editor.  
+- Added Flutter and Dart extensions to support Flutter development.  
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Flutter SDK
+- Installed and configured Flutter SDK.  
+- Verified installation and environment setup using `flutter doctor`.  
+
+---
+
+## 3. Project Initialization
+- Created a new **Flutter project** using VS Code.  
+- Linked the project with Android Studio’s emulator environment.  
+
+---
+
+## 4. Verification and Testing
+Successfully executed the sample Flutter application on:  
+- **Android Emulator** (via Android Studio).  
+- **Web Browser (Google Chrome)**.  
+
+This confirms that the Flutter project runs correctly across multiple platforms.  
+
+---
+
+## 5. Next Steps
+- Integrate **Firebase** into the Flutter project for backend services (authentication, database, storage).  
+- Configure the application for **iOS deployment** using Xcode (on macOS).  
