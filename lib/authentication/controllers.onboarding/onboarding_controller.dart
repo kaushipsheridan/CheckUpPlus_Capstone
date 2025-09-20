@@ -1,0 +1,62 @@
+//import 'package:get/get.dart';
+
+// class OnboardingController extends GetxController {
+
+//   static OnboardingController get instance => Get.find();
+
+//   void updatePageIndicator(index){}
+
+//   void dotNaviagtionClick(index) {}
+
+//   void nextPage(){
+
+//   }
+
+//   void skipPage(){
+
+//   }
+
+
+
+// }
+
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+class OnboardingController extends GetxController {
+  static OnboardingController get instance => Get.find();
+
+  /// Variables
+  final pageController = PageController();
+  Rx<int> currentPageIndex = 0.obs;
+
+  /// Update Current Index when Page Scroll
+  void updatePageIndicator(index) => currentPageIndex.value = index;
+
+  /// Jump to the specific dot selected page.
+  void dotNavigationClick(index) {
+    currentPageIndex.value = index;
+    pageController.jumpToPage(index);
+  }
+
+  /// Go to next page
+  void nextPage() {
+    if (currentPageIndex.value == 2) { 
+      //Replace with the sign-in screen
+      Get.offAll(() => const Scaffold(
+      body: Center(
+        child: Text('Placeholder for Sign-In Screen'),
+      ),
+    ));
+    } else {
+      pageController.nextPage(
+          duration: const Duration(milliseconds: 300), curve: Curves.ease);
+    }
+  }
+
+  /// Skip all onboarding pages
+  void skipPage() {
+    currentPageIndex.value = 2; // Jump to the last page
+    pageController.jumpToPage(2);
+  }
+}
