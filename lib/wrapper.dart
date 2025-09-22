@@ -1,6 +1,6 @@
-import 'package:checkupplus_capstone/homepage.dart';
-import 'package:checkupplus_capstone/login.dart';
-import 'package:checkupplus_capstone/verifyemail.dart';
+import 'package:checkupplus_capstone/screens/homepage.dart';
+import 'package:checkupplus_capstone/authentication/views/login.dart';
+import 'package:checkupplus_capstone/authentication/views/verifyemail.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
