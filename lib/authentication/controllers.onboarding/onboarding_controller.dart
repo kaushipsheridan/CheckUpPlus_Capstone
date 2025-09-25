@@ -16,10 +16,9 @@
 
 //   }
 
-
-
 // }
 
+import 'package:checkupplus_capstone/wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -41,16 +40,14 @@ class OnboardingController extends GetxController {
 
   /// Go to next page
   void nextPage() {
-    if (currentPageIndex.value == 2) { 
+    if (currentPageIndex.value == 2) {
       //Replace with the sign-in screen
-      Get.offAll(() => const Scaffold(
-      body: Center(
-        child: Text('Placeholder for Sign-In Screen'),
-      ),
-    ));
+      Get.offAll(() => Wrapper());
     } else {
       pageController.nextPage(
-          duration: const Duration(milliseconds: 300), curve: Curves.ease);
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.ease,
+      );
     }
   }
 
