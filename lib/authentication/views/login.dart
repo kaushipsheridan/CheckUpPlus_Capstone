@@ -1,5 +1,5 @@
-import 'package:checkupplus_capstone/forgot.dart';
-import 'package:checkupplus_capstone/signup.dart';
+import 'package:checkupplus_capstone/authentication/views/forgot.dart';
+import 'package:checkupplus_capstone/authentication/views/signup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
