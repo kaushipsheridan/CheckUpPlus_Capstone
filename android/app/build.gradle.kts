@@ -2,7 +2,9 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
+
 
 android {
     namespace = "com.example.checkupplus_capstone"
@@ -33,9 +35,15 @@ android {
     }
 }
 
+dependencies {
+  implementation(platform("com.google.firebase:firebase-bom:34.2.0"))
+  implementation("com.google.firebase:firebase-analytics")
+}
+
 flutter {
     source = "../.."
 }
+
 
 dependencies {
     implementation("androidx.appcompat:appcompat:1.4.0")
