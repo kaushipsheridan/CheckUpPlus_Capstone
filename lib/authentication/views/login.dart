@@ -86,7 +86,7 @@ class _LoginState extends State<Login> {
 
   Widget _buildLogo() => Column(
     children: [
-      Image.asset('assets/images/logo.png', height: 70),
+      Image.asset('assets/logos/CheckupPlusLogo.png', height: 70),
       const SizedBox(height: 16),
       const Text(
         'Sign In',
