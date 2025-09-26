@@ -1,11 +1,17 @@
 import 'package:checkupplus_capstone/utils/theme/theme.dart';
+import 'package:checkupplus_capstone/wrapper.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:checkupplus_capstone/screens/onboarding.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // <-- ADD: Initialize GetStorage before Firebase
+  await GetStorage.init(); 
+  
   await Firebase.initializeApp();
   runApp(const MyApp());
 }
@@ -16,10 +22,14 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    // <-- ADD: Check onboarding status
+    final bool onboarded = GetStorage().read('IsOnboarded') ?? false;
+
     return GetMaterialApp(
       title: 'CheckUp Plus App',
       theme: AppTheme.lightTheme,
-      home: const OnboardingScreen(),
+      // <-- CHANGE: Use Wrapper if already onboarded, otherwise OnboardingScreen
+      home: onboarded ? const Wrapper() : const OnboardingScreen(), 
     );
   }
 }

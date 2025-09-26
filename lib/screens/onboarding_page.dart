@@ -23,7 +23,14 @@ class OnboardingPage extends StatelessWidget {
           ),
           Text(title, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 16),
-          Text(subTitle, style: Theme.of(context).textTheme.bodyMedium),
+
+          Text(
+            subTitle, 
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+              fontSize: 18.0,
+            ),
+          ),
         ],
       ),
     );

@@ -21,9 +21,13 @@
 import 'package:checkupplus_capstone/wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 
 class OnboardingController extends GetxController {
   static OnboardingController get instance => Get.find();
+
+  // <-- ADD THIS STORAGE INSTANCE
+  final deviceStorage = GetStorage(); 
 
   /// Variables
   final pageController = PageController();
@@ -41,7 +45,10 @@ class OnboardingController extends GetxController {
   /// Go to next page
   void nextPage() {
     if (currentPageIndex.value == 2) {
-      //Replace with the sign-in screen
+      // ADD: Save completion status
+      deviceStorage.write('IsOnboarded', true); 
+      
+      // Replace with the sign-in screen
       Get.offAll(() => Wrapper());
     } else {
       pageController.nextPage(
@@ -53,7 +60,10 @@ class OnboardingController extends GetxController {
 
   /// Skip all onboarding pages
   void skipPage() {
-    currentPageIndex.value = 2; // Jump to the last page
-    pageController.jumpToPage(2);
+    // CHANGE: Save completion status immediately
+    deviceStorage.write('IsOnboarded', true);
+    
+    // CHANGE: Navigate directly to the next screen (Wrapper)
+    Get.offAll(() => Wrapper());
   }
 }
