@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart'; // Must import Get
+import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:checkupplus_capstone/authentication/navigation_controller.dart'; 
 // NOTE: Your controller must be correctly imported
@@ -28,25 +28,30 @@ class HomePage extends StatelessWidget {
         () => NavigationBar(
           height: 80, 
           elevation: 0, 
+          backgroundColor: const Color(0xFF1A4D8C),
+          indicatorColor: Colors.white.withAlpha((0.2 * 255).round()),
           selectedIndex: controller.selectedIndex.value,
           onDestinationSelected: controller.changeTab, // Use the controller method
-          
+          labelTextStyle: WidgetStateProperty.all(
+            const TextStyle(color: Colors.white),
+          ),
+
           // Destinations (Your four tabs: Home, Bookings, Chat, Profile)
           destinations: const [
             NavigationDestination(
-              icon: Icon(Iconsax.home), 
+              icon: Icon(Iconsax.home, color: Colors.white), 
               label: 'Home',
             ),
             NavigationDestination(
-              icon: Icon(Iconsax.calendar), 
+              icon: Icon(Iconsax.calendar, color: Colors.white), 
               label: 'Bookings',
             ),
             NavigationDestination(
-              icon: Icon(Iconsax.message), 
+              icon: Icon(Iconsax.message, color: Colors.white), 
               label: 'Chat',
             ),
             NavigationDestination(
-              icon: Icon(Iconsax.user), 
+              icon: Icon(Iconsax.user, color: Colors.white), 
               label: 'Profile',
             ),
           ],
