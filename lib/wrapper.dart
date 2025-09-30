@@ -14,10 +14,17 @@ class Wrapper extends StatefulWidget {
 class _WrapperState extends State<Wrapper> {
   @override
   Widget build(BuildContext context) {
+    print('Wrapper build called');
     return Scaffold(
       body: StreamBuilder(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
+          print('Auth state changed: ${snapshot.connectionState}');
+          print('Has data: ${snapshot.hasData}');
+          print('Has error: ${snapshot.hasError}');
+          if (snapshot.hasError) {
+            print('Auth error: ${snapshot.error}');
+          }
           if (snapshot.hasData) {
             if (snapshot.data!.emailVerified) {
               return HomePage();

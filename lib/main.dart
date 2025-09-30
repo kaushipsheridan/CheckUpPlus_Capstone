@@ -5,14 +5,41 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:checkupplus_capstone/screens/onboarding.dart';
+import 'dart:io' show Platform;
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // <-- ADD: Initialize GetStorage before Firebase
-  await GetStorage.init(); 
+  await GetStorage.init();
+  print('GetStorage initialized!');
   
-  await Firebase.initializeApp();
+  try {
+    print('Platform: ${Platform.isIOS ? "iOS" : "Android"}');
+    print('Attempting Firebase initialization...');
+    
+    // Use platform-specific options for iOS
+    if (Platform.isIOS) {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: 'AIzaSyA3m0aAKzO58v8BGuc0mx0pCvmvyzyiMG4',
+          appId: '1:773745160792:ios:f6866bad950a04485a102d',
+          messagingSenderId: '773745160792',
+          projectId: 'checkupplus-5ce4d',
+          storageBucket: 'checkupplus-5ce4d.firebasestorage.app',
+        ),
+      );
+    } else {
+      await Firebase.initializeApp();
+    }
+    
+    print('Firebase initialization successful!');
+    print('Firebase auth instance: ${FirebaseAuth.instance}');
+    print('Current user: ${FirebaseAuth.instance.currentUser}');
+  } catch (e) {
+    print('Firebase initialization failed with error: $e');
+  }
+  
   runApp(const MyApp());
 }
 
@@ -22,8 +49,8 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    // <-- ADD: Check onboarding status
     final bool onboarded = GetStorage().read('IsOnboarded') ?? false;
+    print('IsOnboarded: $onboarded'); // <-- Add this line for debugging
 
     return GetMaterialApp(
       title: 'CheckUp Plus App',

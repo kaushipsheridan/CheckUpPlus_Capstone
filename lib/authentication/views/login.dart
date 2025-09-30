@@ -55,6 +55,7 @@ class _LoginState extends State<Login> {
 
   @override
   Widget build(BuildContext context) {
+    print('Login widget build called');
     return Scaffold(
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
