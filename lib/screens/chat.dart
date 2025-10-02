@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:checkupplus_capstone/authentication/chat_controller.dart'; 
-import 'package:iconsax/iconsax.dart'; 
+import 'package:checkupplus_capstone/authentication/chat_controller.dart';
+import 'package:iconsax/iconsax.dart';
 
 class ChatScreen extends StatelessWidget {
   const ChatScreen({super.key});
@@ -15,17 +15,20 @@ class ChatScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("AI Assistant Chat"), // Appropriate title
         actions: [
-          // View Chat History Button 
+          // View Chat History Button
           IconButton(
             icon: const Icon(Iconsax.clock),
             onPressed: () {
               // TODO: Implement navigation to a new subpage for chat history
-              Get.snackbar("Feature", "Chat History subpage navigation pending.");
+              Get.snackbar(
+                "Feature",
+                "Chat History subpage navigation pending.",
+              );
             },
           ),
         ],
       ),
-      
+
       body: Column(
         children: [
           // Message List View (Reactive with Obx)
@@ -33,20 +36,24 @@ class ChatScreen extends StatelessWidget {
             child: Obx(
               () => ListView.builder(
                 // Use reverse to keep the input field visible at the bottom
-                reverse: true, 
+                reverse: true,
                 itemCount: controller.messages.length,
                 itemBuilder: (context, index) {
                   // Index calculation for reverse list view
-                  final message = controller.messages[controller.messages.length - 1 - index];
+                  final message = controller
+                      .messages[controller.messages.length - 1 - index];
                   return ChatBubble(message: message);
                 },
               ),
             ),
           ),
-          
+
           // Input Field and Send Button Row
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 8.0,
+              vertical: 12.0,
+            ),
             child: Row(
               children: [
                 // Mic Icon (Functional and reactive with Obx)
@@ -54,15 +61,18 @@ class ChatScreen extends StatelessWidget {
                   () => IconButton(
                     icon: Icon(
                       controller.isListening.value
-                          ? Iconsax.microphone_25 // Different icon when listening
+                          ? Iconsax
+                                .microphone_25 // Different icon when listening
                           : Iconsax.microphone_2,
                       // Mic button turns red when listening
-                      color: controller.isListening.value ? Colors.red : Colors.grey, 
+                      color: controller.isListening.value
+                          ? Colors.red
+                          : Colors.grey,
                     ),
                     onPressed: () {
                       if (controller.isListening.value) {
                         // Tapping while listening stops and attempts to send
-                        controller.sendMessage(); 
+                        controller.sendMessage();
                       } else {
                         // Tapping while idle starts listening
                         controller.startListening();
@@ -70,7 +80,7 @@ class ChatScreen extends StatelessWidget {
                     },
                   ),
                 ),
-                
+
                 // Text Input Box
                 Expanded(
                   child: TextFormField(
@@ -82,12 +92,16 @@ class ChatScreen extends StatelessWidget {
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                     ),
-                    onFieldSubmitted: (_) => controller.sendMessage(), // Send on enter key
+                    onFieldSubmitted: (_) =>
+                        controller.sendMessage(), // Send on enter key
                   ),
                 ),
-                
+
                 // Send Icon/Button
                 IconButton(
                   icon: const Icon(Iconsax.send_1, color: Colors.blue),
@@ -111,24 +125,28 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isBot = message.sender == MessageSender.bot;
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Row(
         // Aligns bot messages left, user messages right
-        mainAxisAlignment: isBot ? MainAxisAlignment.start : MainAxisAlignment.end,
+        mainAxisAlignment: isBot
+            ? MainAxisAlignment.start
+            : MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Bot Profile Picture (Left-aligned)
           if (isBot) ...[
             const CircleAvatar(
               radius: 16,
-              backgroundImage: AssetImage('assets/images/bot_profile.png'), // Placeholder
+              backgroundImage: AssetImage(
+                'assets/images/bot_profile.png',
+              ), // Placeholder
               backgroundColor: Colors.blueGrey,
             ),
             const SizedBox(width: 8),
           ],
-          
+
           // The actual message bubble
           Flexible(
             child: Container(
