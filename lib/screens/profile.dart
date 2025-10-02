@@ -9,11 +9,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // 1. Logic is moved here
   final user = FirebaseAuth.instance.currentUser;
 
-  signOut() async {
-    // This function will sign out the user
+  // Sign out function
+  void signOut() async {
     await FirebaseAuth.instance.signOut();
   }
 
@@ -21,41 +20,169 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Profile"),
-        // Optional: Move the sign-out button to the AppBar for easy access
-        actions: [
-          IconButton(
-            onPressed: signOut,
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign Out',
+        title: const Text(
+          "My Profile",
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
           ),
-        ],
+        ),
+        elevation: 0,
       ),
-      
-      // 2. Display User Email and Sign-out button in the body
-      body: Center(
+      body: SingleChildScrollView(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Display the authenticated user's email
-            Text(
-              'Logged in as: ${user?.email ?? "User Not Found"}', 
-              style: Theme.of(context).textTheme.titleLarge,
+            // Profile card
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  // Profile image
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage: const AssetImage('assets/images/default_profile.png'),
+                    // You can replace with user?.photoURL if available
+                    // backgroundImage: user?.photoURL != null 
+                    //     ? NetworkImage(user!.photoURL!) 
+                    //     : const AssetImage('assets/images/default_profile.png') as ImageProvider,
+                  ),
+                  const SizedBox(width: 20),
+                  // User details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user?.displayName ?? "Yashika",
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                       
+                        const SizedBox(height: 4),
+                        Text(
+                          user?.email ?? "email@example.com",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
             
-            // FloatingActionButton logic replaced with a standard ElevatedButton
-            ElevatedButton.icon(
-              onPressed: signOut,
-              icon: const Icon(Icons.logout),
-              label: const Text('Sign Out'),
+            // Menu options
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildMenuItem(
+                    icon: Icons.edit, 
+                    title: 'Edit Profile', 
+                    onTap: () {
+                      // TODO: Navigate to edit profile screen
+                    },
+                  ),                      
+                  _buildMenuDivider(),
+                  _buildMenuItem(
+                    icon: Icons.folder, 
+                    title: 'Electronic Health Records', 
+                    onTap: () {
+                      // TODO: Navigate to health records screen
+                    },
+                  ),
+                  _buildMenuDivider(),
+                  _buildMenuItem(
+                    icon: Icons.settings, 
+                    title: 'Settings', 
+                    onTap: () {
+                      // TODO: Navigate to settings screen
+                    },
+                  ),
+                  _buildMenuDivider(),
+                  _buildMenuItem(
+                    icon: Icons.support_agent, 
+                    title: 'Contact Us', 
+                    onTap: () {
+                      // TODO: Navigate to contact us screen
+                    },
+                  ),
+                  _buildMenuDivider(),
+                  _buildMenuItem(
+                    icon: Icons.logout, 
+                    title: 'LogOut', 
+                    onTap: signOut,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
-      
-      // The original FloatingActionButton is removed from the Scaffold, 
-      // as it's now handled by the body/AppBar.
     );
+  }
+  
+  // Helper method to build menu items
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: Colors.grey,
+        size: 30,
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      onTap: onTap,
+    );
+  }
+  
+  // Helper method to build dividers between menu items
+  Widget _buildMenuDivider() {
+    return const Divider(height: 1, thickness: 0.5);
   }
 }
