@@ -49,6 +49,7 @@ dependencies:
   get: ^4.7.2
   local_auth: ^2.3.0
   get_storage: ^2.0.3
+  flutter_dotenv: ^6.0.0
 
 dev_dependencies:
   flutter_test:

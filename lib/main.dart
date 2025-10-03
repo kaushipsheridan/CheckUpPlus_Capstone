@@ -18,20 +18,8 @@ void main() async {
     print('Platform: ${Platform.isIOS ? "iOS" : "Android"}');
     print('Attempting Firebase initialization...');
     
-    // Use platform-specific options for iOS
-    if (Platform.isIOS) {
-      await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: 'AIzaSyA3m0aAKzO58v8BGuc0mx0pCvmvyzyiMG4',
-          appId: '1:773745160792:ios:f6866bad950a04485a102d',
-          messagingSenderId: '773745160792',
-          projectId: 'checkupplus-5ce4d',
-          storageBucket: 'checkupplus-5ce4d.firebasestorage.app',
-        ),
-      );
-    } else {
-      await Firebase.initializeApp();
-    }
+    // Remove hardcoded API keys and use default configuration files
+    await Firebase.initializeApp();
     
     print('Firebase initialization successful!');
     print('Firebase auth instance: ${FirebaseAuth.instance}');
