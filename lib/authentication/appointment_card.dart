@@ -6,12 +6,19 @@ import 'appointment_model.dart';
 /// Custom Card to display appointment details and action buttons.
 class AppointmentCard extends StatelessWidget {
   final Appointment appointment;
+  // New: Callback to inform the parent screen when an appointment is canceled
+  final Function(String appointmentId) onCancel; 
   
-  const AppointmentCard({super.key, required this.appointment});
+  const AppointmentCard({
+    super.key, 
+    required this.appointment,
+    required this.onCancel, // New: Required
+  });
 
   @override
   Widget build(BuildContext context) {
     // Determine card color and status text based on status for quick visual feedback
+    // ... (unchanged status color/text logic)
     Color statusColor;
     String statusText;
     switch (appointment.status) {
@@ -32,6 +39,7 @@ class AppointmentCard extends StatelessWidget {
         statusText = 'Missed';
         break;
     }
+
 
     return Card(
       elevation: 4,
@@ -113,7 +121,8 @@ class AppointmentCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           OutlinedButton(
-            onPressed: () => showSnackbar('Cancel'),
+            // KEY FIX: Call the onCancel callback here
+            onPressed: () => onCancel(appointment.id), 
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.red,
               side: const BorderSide(color: Colors.red),
