@@ -4,7 +4,9 @@ import 'package:checkupplus_capstone/widgets/speciality_grid.dart';
 import 'package:flutter/material.dart';
 import '../widgets/ai_cta_card.dart';
 import '../widgets/clinic_card.dart';
-import 'category_specialists_screen.dart';
+// import 'category_specialists_card.dart'; // <-- Removed incorrect import
+import 'doctor_list_screen.dart'; // <-- Added the correct import for the list page
+
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -50,7 +52,8 @@ class HomeScreen extends StatelessWidget {
               onCategoryTap: (category) => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CategorySpecialistsScreen(category: category),
+                  // FIX APPLIED HERE: Navigate to DoctorListScreen and pass the category
+                  builder: (_) => DoctorListScreen(category: category),
                 ),
               ),
             ),

@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
 import '../authentication/appointment_model.dart';
 import '../authentication/appointment_card.dart';
+import 'category_specialists_card.dart'; // Assuming the screen file name is correct
+
 
 // --- Helper View for Tab Content ---
 
 /// Renders a filtered list of appointments for a single tab.
 class AppointmentListView extends StatelessWidget {
   final AppointmentStatus filterStatus;
+  final List<Appointment> appointments;
+  // New: Pass the callback for cancellation
+  final Function(String appointmentId) onCancelAppointment; 
   
-  const AppointmentListView({super.key, required this.filterStatus});
+  const AppointmentListView({
+    super.key, 
+    required this.filterStatus,
+    required this.appointments, // New: Accept the list from the stateful parent
+    required this.onCancelAppointment, // New: Accept the cancellation handler
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Filter the mock data based on the required status
-    final filteredList = mockAppointments.where((appt) {
+    // Filter the live data based on the required status
+    final filteredList = appointments.where((appt) {
       if (filterStatus == AppointmentStatus.canceled) {
         // Canceled/Missed tab needs both canceled and missed status
         return appt.status == AppointmentStatus.canceled || appt.status == AppointmentStatus.missed;
@@ -33,30 +43,62 @@ class AppointmentListView extends StatelessWidget {
     return ListView.builder(
       itemCount: filteredList.length,
       itemBuilder: (context, index) {
-        return AppointmentCard(appointment: filteredList[index]);
+        return AppointmentCard(
+          appointment: filteredList[index],
+          // Pass the callback to the card
+          onCancel: onCancelAppointment,
+        );
       },
     );
   }
 }
 
 
-// --- Main Screen Implementation ---
+// --- Main Screen Implementation (Converted to StatefulWidget) ---
 
 /// The main screen displaying the appointment tabs and booking button.
-class BookingsScreen extends StatelessWidget {
+class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
+
+  @override
+  State<BookingsScreen> createState() => _BookingsScreenState();
+}
+
+class _BookingsScreenState extends State<BookingsScreen> {
+  // 1. MANAGE THE APPOINTMENT LIST STATE
+  // We use a copy of mockAppointments so we can modify it
+  List<Appointment> currentAppointments = List.from(mockAppointments);
 
   /// Handles the navigation to the booking page.
   void _onBookAppointmentTap(BuildContext context) {
-    // Placeholder navigation for "Book an Appointment"
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Appointment Category')),
-          body: const Center(child: Text('Category Selection Page')),
-        ),
+        builder: (context) => const CategorySpecialistsScreen(),
       ),
     );
+  }
+
+  // 2. NEW METHOD: Update the status of an appointment
+  void _cancelAppointment(String appointmentId) {
+    setState(() {
+      final index = currentAppointments.indexWhere((appt) => appt.id == appointmentId);
+      if (index != -1 && currentAppointments[index].status == AppointmentStatus.upcoming) {
+        // Create a new Appointment object with the CANCELED status
+        currentAppointments[index] = Appointment(
+          id: currentAppointments[index].id,
+          date: currentAppointments[index].date,
+          time: currentAppointments[index].time,
+          serviceName: currentAppointments[index].serviceName,
+          doctorName: currentAppointments[index].doctorName,
+          status: AppointmentStatus.canceled,
+          cancellationReason: 'Canceled by user.', // Add a default reason
+        );
+        // Show confirmation to the user
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment successfully canceled.')),
+        );
+      }
+    });
   }
 
   @override
@@ -68,14 +110,14 @@ class BookingsScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text('My Appointments'),
           elevation: 0,
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary, // Use default theme color
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary, 
           
           // Custom AppBar bottom to include the button above the tabs
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(100.0), // Height for button + tabs
             child: Column(
               children: [
-                // Book an Appointment Button (Always visible)
+                // Book an Appointment Button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   child: SizedBox(
@@ -100,7 +142,6 @@ class BookingsScreen extends StatelessWidget {
                   tabs: [
                     Tab(text: 'Upcoming'),
                     Tab(text: 'Completed'),
-                    // Since AppointmentStatus doesn't have a combined 'Canceled/Missed', we use 'canceled' for the filter logic.
                     Tab(text: 'Canceled/Missed'), 
                   ],
                 ),
@@ -109,17 +150,29 @@ class BookingsScreen extends StatelessWidget {
           ),
         ),
         
-        // Tab Bar View
-        body: const TabBarView(
+        // Tab Bar View - Pass the stateful data and the callback
+        body: TabBarView(
           children: [
             // Upcoming Tab Content
-            AppointmentListView(filterStatus: AppointmentStatus.upcoming),
+            AppointmentListView(
+              filterStatus: AppointmentStatus.upcoming,
+              appointments: currentAppointments,
+              onCancelAppointment: _cancelAppointment,
+            ),
             
             // Completed Tab Content
-            AppointmentListView(filterStatus: AppointmentStatus.completed),
+            AppointmentListView(
+              filterStatus: AppointmentStatus.completed,
+              appointments: currentAppointments,
+              onCancelAppointment: _cancelAppointment,
+            ),
             
             // Canceled/Missed Tab Content
-            AppointmentListView(filterStatus: AppointmentStatus.canceled),
+            AppointmentListView(
+              filterStatus: AppointmentStatus.canceled,
+              appointments: currentAppointments,
+              onCancelAppointment: _cancelAppointment,
+            ),
           ],
         ),
       ),
