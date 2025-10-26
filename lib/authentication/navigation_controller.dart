@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import 'package:flutter/material.dart';
 
 // Screens are imported directly from the 'screens' folder
 import 'package:checkupplus_capstone/screens/home.dart';

@@ -8,18 +8,15 @@ class ChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Initialize the Chat Controller
     final controller = Get.put(ChatController());
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("AI Assistant Chat"), // Appropriate title
+        title: const Text("Symptom Checker"),
         actions: [
-          // View Chat History Button
           IconButton(
             icon: const Icon(Iconsax.clock),
             onPressed: () {
-              // TODO: Implement navigation to a new subpage for chat history
               Get.snackbar(
                 "Feature",
                 "Chat History subpage navigation pending.",
@@ -28,18 +25,15 @@ class ChatScreen extends StatelessWidget {
           ),
         ],
       ),
-
       body: Column(
         children: [
-          // Message List View (Reactive with Obx)
+          
           Expanded(
             child: Obx(
               () => ListView.builder(
-                // Use reverse to keep the input field visible at the bottom
                 reverse: true,
                 itemCount: controller.messages.length,
                 itemBuilder: (context, index) {
-                  // Index calculation for reverse list view
                   final message = controller
                       .messages[controller.messages.length - 1 - index];
                   return ChatBubble(message: message);
@@ -48,75 +42,201 @@ class ChatScreen extends StatelessWidget {
             ),
           ),
 
-          // Input Field and Send Button Row
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 8.0,
-              vertical: 12.0,
-            ),
-            child: Row(
-              children: [
-                // Mic Icon (Functional and reactive with Obx)
-                Obx(
-                  () => IconButton(
-                    icon: Icon(
-                      controller.isListening.value
-                          ? Iconsax
-                                .microphone_25 // Different icon when listening
-                          : Iconsax.microphone_2,
-                      // Mic button turns red when listening
-                      color: controller.isListening.value
-                          ? Colors.red
-                          : Colors.grey,
-                    ),
-                    onPressed: () {
-                      if (controller.isListening.value) {
-                        // Tapping while listening stops and attempts to send
-                        controller.sendMessage();
-                      } else {
-                        // Tapping while idle starts listening
-                        controller.startListening();
-                      }
-                    },
-                  ),
-                ),
+          // --- DYNAMIC INPUT AREA ---
+          Obx(() {
+            if (controller.isLoading.value) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20.0),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            
+            if (controller.interviewActive.value && controller.currentQuestion.value != null) {
+              return _buildQuestionUI(controller);
+            } else {
+              return _buildTextInput(controller);
+            }
+          }),
+        ],
+      ),
+    );
+  }
 
-                // Text Input Box
-                Expanded(
-                  child: TextFormField(
-                    controller: controller.textController,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                    ),
-                    onFieldSubmitted: (_) =>
-                        controller.sendMessage(), // Send on enter key
-                  ),
-                ),
-
-                // Send Icon/Button
-                IconButton(
-                  icon: const Icon(Iconsax.send_1, color: Colors.blue),
-                  onPressed: controller.sendMessage,
-                ),
-              ],
+  Widget _buildTextInput(ChatController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8.0,
+        vertical: 12.0,
+      ),
+      child: Row(
+        children: [
+          // Mic Icon
+          Obx(
+            () => IconButton(
+              icon: Icon(
+                controller.isListening.value
+                    ? Iconsax.microphone_25
+                    : Iconsax.microphone_2,
+                color: controller.isListening.value ? Colors.red : Colors.grey,
+              ),
+              onPressed: () {
+                if (controller.isListening.value) {
+                  controller.stopListening();
+                } else {
+                  controller.startListening();
+                }
+              },
             ),
+          ),
+
+          // Text Input Box
+          Expanded(
+            child: TextFormField(
+              controller: controller.textController,
+              decoration: InputDecoration(
+                hintText: controller.userAge.value == null 
+                  ? 'Describe your symptom...' 
+                  : 'Describe your symptom...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+              ),
+              onFieldSubmitted: (_) => controller.sendUserInput(),
+            ),
+          ),
+
+          // Send Icon
+          IconButton(
+            icon: const Icon(Iconsax.send_1, color: Colors.blue),
+            onPressed: controller.sendUserInput,
           ),
         ],
       ),
     );
   }
-}
 
-// --- Message Bubble Widget ---
+  Widget _buildQuestionUI(ChatController controller) {
+    final question = controller.currentQuestion.value;
+    if (question == null) return const SizedBox.shrink();
+
+    String type = question['type'];
+
+    if (type == 'single') {
+      List<dynamic> choices = question['items'][0]['choices'];
+      return Container(
+        padding: const EdgeInsets.all(8.0),
+        child: Wrap(
+          spacing: 8.0,
+          runSpacing: 4.0,
+          alignment: WrapAlignment.center,
+          children: choices.map((choice) {
+            return ElevatedButton(
+              child: Text(choice['label']),
+              onPressed: () => controller.answerSingleChoice(choice),
+            );
+          }).toList(),
+        ),
+      );
+    }
+
+
+    if (type == 'group_single') {
+      List<dynamic> items = question['items']; // These are the choices
+      
+      return Container(
+        padding: const EdgeInsets.all(8.0),
+        child: Wrap(
+          spacing: 8.0,
+          runSpacing: 4.0,
+          alignment: WrapAlignment.center,
+          // We map over the 'items' directly
+          children: items.map((item) {
+            return ElevatedButton(
+              child: Text(item['name']), // Use 'name' as the label
+              onPressed: () => controller.answerGroupSingleChoice(item),
+            );
+          }).toList(),
+        ),
+      );
+    }
+    
+    // --- Type: 'group_multiple' (e.g., Select all that apply) ---
+    if (type == 'group_multiple') {
+      List<dynamic> items = question['items'];
+      return Container(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            // List of checkboxes
+            ...items.map((item) {
+              return Obx(() => CheckboxListTile(
+                    title: Text(item['name']),
+                    value: controller.selectedItemIds.contains(item['id']),
+                    onChanged: (bool? value) {
+                      if (value == true) {
+                        controller.selectedItemIds.add(item['id']);
+                      } else {
+                        controller.selectedItemIds.remove(item['id']);
+                      }
+                    },
+                  ));
+            }).toList(),
+            // Submit button
+            ElevatedButton(
+              child: const Text("Submit"),
+              onPressed: controller.answerMultipleChoice,
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // --- Type: 'integer' or 'string' (e.g., "What is your temperature?") ---
+    if (type == 'integer' || type == 'string' || type == 'float') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: controller.responseInputController,
+                keyboardType: (type == 'integer' || type == 'float')
+                  ? TextInputType.number 
+                  : TextInputType.text,
+                decoration: InputDecoration(
+                  hintText: 'Type your answer...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                ),
+                onFieldSubmitted: (_) => controller.answerGeneralInput(type),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Iconsax.send_1, color: Colors.blue),
+              onPressed: () => controller.answerGeneralInput(type),
+            ),
+          ],
+        ),
+      );
+    }
+    
+
+    return Text("Unknown question type: $type");
+  }
+}
 
 class ChatBubble extends StatelessWidget {
   final Message message;
@@ -129,34 +249,27 @@ class ChatBubble extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Row(
-        // Aligns bot messages left, user messages right
-        mainAxisAlignment: isBot
-            ? MainAxisAlignment.start
-            : MainAxisAlignment.end,
+        mainAxisAlignment:
+            isBot ? MainAxisAlignment.start : MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Bot Profile Picture (Left-aligned)
           if (isBot) ...[
             const CircleAvatar(
               radius: 16,
-              backgroundImage: AssetImage(
-                'assets/images/bot_profile.png',
-              ), // Placeholder
+              // Make sure this asset exists in your project
+              backgroundImage: AssetImage('assets/images/bot_profile.png'), 
               backgroundColor: Colors.blueGrey,
+              //child: Icon(Iconsax.health, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 8),
           ],
-
-          // The actual message bubble
           Flexible(
             child: Container(
               margin: const EdgeInsets.only(top: 4, bottom: 4),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                // Different colors for different senders
                 color: isBot ? Colors.grey.shade200 : Colors.blue,
                 borderRadius: BorderRadius.only(
-                  // Rounded corners based on alignment
                   topLeft: Radius.circular(isBot ? 0 : 12),
                   topRight: Radius.circular(isBot ? 12 : 0),
                   bottomLeft: const Radius.circular(12),
