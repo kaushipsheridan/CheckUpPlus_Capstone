@@ -233,13 +233,11 @@ class ChatScreen extends StatelessWidget {
       );
     }
     
-    // Fallback for any other question type
+
     return Text("Unknown question type: $type");
   }
 }
 
-// --- Message Bubble Widget (UNMODIFIED) ---
-// (Your existing ChatBubble class goes here)
 class ChatBubble extends StatelessWidget {
   final Message message;
   const ChatBubble({super.key, required this.message});
