@@ -5,6 +5,17 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+import java.io.FileInputStream
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(FileInputStream(localPropertiesFile))
+    } else {
+        println("local.properties not found at ${localPropertiesFile.absolutePath}")
+    }
+}
 
 android {
     namespace = "com.example.checkupplus_capstone"
@@ -19,6 +30,10 @@ android {
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
+    
+    buildFeatures {
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId = "com.example.checkupplus_capstone"
@@ -26,6 +41,17 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        val mapsApiKey = localProperties.getProperty("MAPS_API_KEY")
+
+        if (mapsApiKey.isNullOrEmpty()) {
+            println("!!! WARNING: MAPS_API_KEY is missing or empty. Maps will not load. !!!")
+            manifestPlaceholders["MAPS_API_KEY"] = ""
+        } else {
+            manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+            buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
+            println("!!! SUCCESS: MAPS_API_KEY injected into AndroidManifest. !!!")
+        }
     }
 
     buildTypes {
