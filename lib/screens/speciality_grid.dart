@@ -1,8 +1,7 @@
 // widgets/speciality_grid.dart (or where you placed it)
 
 import 'package:flutter/material.dart';
-import '../screens/doctor_model.dart'; 
-import '../screens/category_specialists_card.dart'; // Import the full grid screen
+import '../screens/doctor_model.dart';
 
 class SpecialtyGrid extends StatelessWidget {
   // This takes a callback function when an item in the grid is tapped
@@ -14,15 +13,15 @@ class SpecialtyGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     // We only show a limited number of categories on the Home screen
     // The CategorySpecialistsScreen shows all of them.
-    final limitedCategories = mockCategories.take(8).toList(); 
+    final limitedCategories = mockCategories.take(8).toList();
 
     return GridView.builder(
       // Important to use these settings when embedding a GridView inside a SingleChildScrollView
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(), 
-      
+      physics: const NeverScrollableScrollPhysics(),
+
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4, 
+        crossAxisCount: 4,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
         childAspectRatio: 0.8,
