@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'doctor_model.dart'; 
+import 'doctor_model.dart';
 import 'doctor_list_screen.dart'; // Import the next screen
+import '../authentication/appointment_model.dart'; // Import for the Appointment class
 
 /// The screen showing a grid of all medical categories.
 class CategorySpecialistsScreen extends StatelessWidget {
@@ -32,13 +33,24 @@ class CategorySpecialistsScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final category = mockCategories[index];
                   return InkWell(
-                    onTap: () {
-                      // Correct navigation: Go to the doctor list for the tapped category
-                      Navigator.of(context).push(
+                    // *** UPDATED onTap ***
+                    onTap: () async {
+                      // Make it async
+                      // 1. Push the doctor list and wait for a result
+                      final newAppointment = await Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => DoctorListScreen(category: category.title),
+                          builder: (context) =>
+                              DoctorListScreen(category: category.title),
                         ),
                       );
+
+                      // 2. Check if we got an appointment back
+                      if (newAppointment != null &&
+                          newAppointment is Appointment) {
+                        // 3. If yes, pop *this* screen and pass the result back
+                        //    to BookingsScreen
+                        Navigator.of(context).pop(newAppointment);
+                      }
                     },
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -47,7 +59,10 @@ class CategorySpecialistsScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(15),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(

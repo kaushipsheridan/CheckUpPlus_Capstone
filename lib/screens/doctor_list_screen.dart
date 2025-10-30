@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'doctor_model.dart'; // Import the data models
+import 'booking_calendar_screen.dart'; // Import the new booking screen
+import '../authentication/appointment_model.dart'; // Import for the Appointment class
 
 class DoctorListScreen extends StatelessWidget {
   final String category;
 
-  // The key fix: This screen MUST accept a category string
   const DoctorListScreen({super.key, required this.category});
 
   @override
   Widget build(BuildContext context) {
-    // Filter the mock data based on the category passed to this screen
     final doctors = getDoctorsForCategory(category);
 
     return Scaffold(
@@ -25,7 +25,17 @@ class DoctorListScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16.0),
               itemCount: doctors.length,
               itemBuilder: (context, index) {
-                return DoctorCard(doctor: doctors[index]);
+                // Pass the doctor to the updated card
+                return DoctorCard(
+                  doctor: doctors[index],
+                  // Handle the result when this card's flow finishes
+                  onAppointmentBooked: (newAppointment) {
+                    // When the calendar screen pops, it gives us the appointment.
+                    // We pop *this* screen and pass the appointment back to
+                    // CategorySpecialistsScreen.
+                    Navigator.of(context).pop(newAppointment);
+                  },
+                );
               },
             ),
     );
@@ -35,7 +45,14 @@ class DoctorListScreen extends StatelessWidget {
 /// A custom card widget to display a single doctor's details
 class DoctorCard extends StatelessWidget {
   final Doctor doctor;
-  const DoctorCard({super.key, required this.doctor});
+  // New: Callback to pass the booked appointment back up
+  final ValueChanged<Appointment> onAppointmentBooked;
+
+  const DoctorCard({
+    super.key,
+    required this.doctor,
+    required this.onAppointmentBooked,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +68,8 @@ class DoctorCard extends StatelessWidget {
             // Avatar/Icon placeholder
             CircleAvatar(
               radius: 30,
-              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              backgroundColor:
+                  Theme.of(context).colorScheme.primary.withOpacity(0.2),
               child: Icon(
                 Icons.person,
                 color: Theme.of(context).colorScheme.primary,
@@ -65,7 +83,8 @@ class DoctorCard extends StatelessWidget {
                 children: [
                   Text(
                     doctor.name,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -75,7 +94,8 @@ class DoctorCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Text(
                     doctor.clinicName,
-                    style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                    style: const TextStyle(
+                        fontSize: 14, fontStyle: FontStyle.italic),
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -84,7 +104,9 @@ class DoctorCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text('${doctor.rating.toStringAsFixed(1)} Rating'),
                       const SizedBox(width: 15),
-                      Icon(Icons.location_on, color: Theme.of(context).colorScheme.primary, size: 18),
+                      Icon(Icons.location_on,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 18),
                       const SizedBox(width: 4),
                       Text('${doctor.distanceKm} km away'),
                     ],
@@ -93,14 +115,18 @@ class DoctorCard extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.red.shade100,
                           borderRadius: BorderRadius.circular(5),
                         ),
                         child: const Text(
                           'Urgent Care Available',
-                          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                          style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12),
                         ),
                       ),
                     ),
@@ -111,11 +137,23 @@ class DoctorCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton(
-                onPressed: () {
-                  // Placeholder for booking action
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Starting booking flow for ${doctor.name}')),
+                // *** UPDATED onPressed ***
+                onPressed: () async {
+                  // Make it async
+                  // 1. Push the calendar screen and wait for a result
+                  final newAppointment = await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          BookingCalendarScreen(doctor: doctor),
+                    ),
                   );
+
+                  // 2. Check if we got a valid appointment back
+                  if (newAppointment != null &&
+                      newAppointment is Appointment) {
+                    // 3. If yes, call the callback to pass it up to the list screen
+                    onAppointmentBooked(newAppointment);
+                  }
                 },
                 child: const Text('Book'),
               ),
