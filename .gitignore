@@ -44,7 +44,20 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-android/app/google-services.json
+/android/local
 android/local.properties
+
+# Firebase configuration files (project-specific)
 android/app/google-services.json
+android/app/src/google-services.json
+ios/Runner/GoogleService-Info.plist
 ios/Runner/GoogleService-Info*.plist
+
+# Environment variables with secrets
+.env
+.env.local
+.env.*.local
+
+# Firebase Admin SDK private keys (NEVER commit!)
+**/service-account-key*.json
+**/firebase-adminsdk-*.json
