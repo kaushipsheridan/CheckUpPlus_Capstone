@@ -16,7 +16,7 @@ class UserService {
     required String lastName,
   }) async {
     try {
-      await _firestore.collection('Users').doc(uid).set({
+      await _firestore.collection('users').doc(uid).set({
         'Email': email,
         'First_Name': firstName,
         'Last_Name': lastName,
@@ -37,7 +37,7 @@ class UserService {
   // Check if user profile exists in Firestore
   Future<bool> userProfileExists(String uid) async {
     try {
-      final doc = await _firestore.collection('Users').doc(uid).get();
+      final doc = await _firestore.collection('users').doc(uid).get();
       return doc.exists;
     } catch (e) {
       print('❌ Error checking user profile: $e');
@@ -48,7 +48,7 @@ class UserService {
   // Get user profile
   Future<DocumentSnapshot?> getUserProfile(String uid) async {
     try {
-      return await _firestore.collection('Users').doc(uid).get();
+      return await _firestore.collection('users').doc(uid).get();
     } catch (e) {
       print('❌ Error getting user profile: $e');
       return null;
@@ -59,7 +59,7 @@ class UserService {
   Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
     try {
       data['updatedAt'] = FieldValue.serverTimestamp();
-      await _firestore.collection('Users').doc(uid).update(data);
+      await _firestore.collection('users').doc(uid).update(data);
       print('✅ User profile updated successfully');
     } catch (e) {
       print('❌ Error updating user profile: $e');
@@ -69,7 +69,7 @@ class UserService {
 
   // Stream user profile for real-time updates
   Stream<DocumentSnapshot> getUserProfileStream(String uid) {
-    return _firestore.collection('Users').doc(uid).snapshots();
+    return _firestore.collection('users').doc(uid).snapshots();
   }
 
   // Ensure user profile exists (called on login)
@@ -99,7 +99,7 @@ class UserService {
   // Check if profile is complete
   Future<bool> isProfileComplete(String uid) async {
     try {
-      final doc = await _firestore.collection('Users').doc(uid).get();
+      final doc = await _firestore.collection('users').doc(uid).get();
       if (!doc.exists) return false;
 
       final data = doc.data() as Map<String, dynamic>;
