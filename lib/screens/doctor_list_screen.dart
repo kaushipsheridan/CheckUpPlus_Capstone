@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'doctor_model.dart'; // Import the data models
+import '../models/doctor_model.dart'; // Import the data models
 import 'booking_calendar_screen.dart'; // Import the new booking screen
-import '../authentication/appointment_model.dart'; // Import for the Appointment class
+import '../models/appointment_model.dart'; // Import for the Appointment class
 
 class DoctorListScreen extends StatelessWidget {
   final String category;
