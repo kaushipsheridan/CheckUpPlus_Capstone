@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'doctor_model.dart';
-import 'doctor_list_screen.dart'; // Import the next screen
-import '../authentication/appointment_model.dart'; // Import for the Appointment class
+import '../models/doctor_model.dart';
+import 'doctor_list_screen.dart';
 
 /// The screen showing a grid of all medical categories.
 class CategorySpecialistsScreen extends StatelessWidget {
@@ -33,23 +32,20 @@ class CategorySpecialistsScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final category = mockCategories[index];
                   return InkWell(
-                    // *** UPDATED onTap ***
                     onTap: () async {
-                      // Make it async
-                      // 1. Push the doctor list and wait for a result
-                      final newAppointment = await Navigator.of(context).push(
+                      // Navigate to doctor list and wait for appointment ID
+                      final appointmentId = await Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) =>
                               DoctorListScreen(category: category.title),
                         ),
                       );
 
-                      // 2. Check if we got an appointment back
-                      if (newAppointment != null &&
-                          newAppointment is Appointment) {
-                        // 3. If yes, pop *this* screen and pass the result back
-                        //    to BookingsScreen
-                        Navigator.of(context).pop(newAppointment);
+                      // If an appointment was created, pop back with the ID
+                      if (appointmentId != null && appointmentId is String) {
+                        if (context.mounted) {
+                          Navigator.of(context).pop(appointmentId);
+                        }
                       }
                     },
                     child: Column(
