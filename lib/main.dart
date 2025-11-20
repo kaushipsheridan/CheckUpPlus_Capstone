@@ -18,7 +18,7 @@ void main() async {
     print('Platform: ${Platform.isIOS ? "iOS" : "Android"}');
     print('Attempting Firebase initialization...');
     
-    // Remove hardcoded API keys and use default configuration files
+    
     await Firebase.initializeApp();
     
     print('Firebase initialization successful!');

@@ -1,29 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:checkupplus_capstone/models/doctor_model.dart';
+import 'package:checkupplus_capstone/models/appointment_model.dart';
 import 'package:checkupplus_capstone/services/appointment_service.dart';
-import 'package:checkupplus_capstone/services/clinic_service.dart';
 
-class BookingCalendarScreen extends StatefulWidget {
-  final DoctorModel doctor; // Changed from Doctor to DoctorModel
+class RescheduleAppointmentScreen extends StatefulWidget {
+  final AppointmentModel appointment;
 
-  const BookingCalendarScreen({super.key, required this.doctor});
+  const RescheduleAppointmentScreen({
+    super.key,
+    required this.appointment,
+  });
 
   @override
-  State<BookingCalendarScreen> createState() => _BookingCalendarScreenState();
+  State<RescheduleAppointmentScreen> createState() =>
+      _RescheduleAppointmentScreenState();
 }
 
-class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
+class _RescheduleAppointmentScreenState
+    extends State<RescheduleAppointmentScreen> {
   final AppointmentService _appointmentService = AppointmentService();
-  final ClinicService _clinicService = ClinicService();
-  
+
   DateTime? _selectedDate;
   String? _selectedTimeSlot;
   List<String> _availableTimeSlots = [];
   List<String> _bookedTimeSlots = [];
   bool _isLoadingSlots = false;
-  bool _isBooking = false;
-  String? _clinicName;
+  bool _isRescheduling = false;
 
   // Generate the next 30 days for selection
   final List<DateTime> _upcomingDates = List.generate(30, (index) {
@@ -43,33 +45,21 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _loadClinicName();
-  }
-
-  /// Load clinic name
-  Future<void> _loadClinicName() async {
-    try {
-      final clinic = await _clinicService.getClinic(widget.doctor.clinicId);
-      if (clinic != null && mounted) {
-        setState(() {
-          _clinicName = clinic.name;
-        });
-      }
-    } catch (e) {
-      print('Error loading clinic: $e');
-    }
+    // Pre-select the current appointment date and time
+    _selectedDate = widget.appointment.date;
+    _selectedTimeSlot = widget.appointment.timeSlot;
+    _loadBookedTimeSlots(_selectedDate!);
   }
 
   /// Load booked time slots when a date is selected
   Future<void> _loadBookedTimeSlots(DateTime date) async {
-    if (widget.doctor.id == null) return;
-
     setState(() => _isLoadingSlots = true);
 
     try {
       final bookedSlots = await _appointmentService.getBookedTimeSlots(
-        doctorId: widget.doctor.id!,
+        doctorId: widget.appointment.doctorId,
         date: date,
+        excludeAppointmentId: widget.appointment.id, // Exclude current appointment
       );
 
       setState(() {
@@ -82,7 +72,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     } catch (e) {
       print('Error loading time slots: $e');
       setState(() => _isLoadingSlots = false);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading available times: $e')),
@@ -91,43 +81,54 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     }
   }
 
-  /// Confirm and save appointment to Firestore
-  Future<void> _confirmBooking() async {
-    if (_selectedDate == null || _selectedTimeSlot == null || widget.doctor.id == null) {
+  /// Confirm and save rescheduled appointment
+  Future<void> _confirmReschedule() async {
+    if (_selectedDate == null ||
+        _selectedTimeSlot == null ||
+        widget.appointment.id == null) {
       return;
     }
 
-    setState(() => _isBooking = true);
+    // Check if anything changed
+    if (_selectedDate == widget.appointment.date &&
+        _selectedTimeSlot == widget.appointment.timeSlot) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a different date or time'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isRescheduling = true);
 
     try {
-      // Create appointment in Firestore
-      final appointmentId = await _appointmentService.createAppointment(
-        clinicId: widget.doctor.clinicId,
-        doctorId: widget.doctor.id!,
-        date: _selectedDate!,
-        timeSlot: _selectedTimeSlot!,
-        serviceName: widget.doctor.specialty,
+      await _appointmentService.rescheduleAppointment(
+        appointmentId: widget.appointment.id!,
+        doctorId: widget.appointment.doctorId,
+        newDate: _selectedDate!,
+        newTimeSlot: _selectedTimeSlot!,
       );
 
       if (mounted) {
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Appointment successfully booked!'),
+            content: Text('Appointment rescheduled successfully!'),
             backgroundColor: Colors.green,
           ),
         );
 
-        // Pop back with the appointment ID
-        Navigator.of(context).pop(appointmentId);
+        // Pop back to bookings screen
+        Navigator.of(context).pop(true); // Return true to trigger reload
       }
     } catch (e) {
-      setState(() => _isBooking = false);
-      
+      setState(() => _isRescheduling = false);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error booking appointment: $e'),
+            content: Text('Error rescheduling: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -139,10 +140,10 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
   String _formatTimeSlot(String timeSlot) {
     final parts = timeSlot.split(':');
     if (parts.length != 2) return timeSlot;
-    
+
     final hour = int.tryParse(parts[0]) ?? 0;
     final minute = parts[1];
-    
+
     if (hour == 0) return '12:$minute AM';
     if (hour < 12) return '$hour:$minute AM';
     if (hour == 12) return '12:$minute PM';
@@ -151,57 +152,44 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isBookingEnabled = 
-        _selectedDate != null && 
-        _selectedTimeSlot != null && 
-        !_isBooking;
+    final bool isRescheduleEnabled =
+        _selectedDate != null && _selectedTimeSlot != null && !_isRescheduling;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Book with ${widget.doctor.name}'),
+        title: const Text('Reschedule Appointment'),
       ),
-      body: _isBooking
+      body: _isRescheduling
           ? const Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- 1. Doctor Info Header ---
+                  // --- Current Appointment Info ---
                   Card(
                     elevation: 0,
-                    color: Colors.blue.shade50,
+                    color: Colors.orange.shade50,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          CircleAvatar(
-                            radius: 24,
-                            backgroundColor: Colors.blue.shade100,
-                            child: Icon(Icons.person,
-                                color: Colors.blue.shade800),
+                          const Text(
+                            'Current Appointment',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(widget.doctor.name,
-                                    style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold)),
-                                Text(widget.doctor.specialty,
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.grey.shade700)),
-                                if (_clinicName != null)
-                                  Text(_clinicName!,
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey.shade600)),
-                              ],
+                          const SizedBox(height: 8),
+                          Text(
+                            '${widget.appointment.formattedDate} at ${widget.appointment.formattedTime}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade700,
                             ),
                           ),
                         ],
@@ -210,8 +198,8 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                   ),
                   const Divider(height: 32),
 
-                  // --- 2. Date Selector ---
-                  const Text('Select a Date',
+                  // --- Date Selector ---
+                  const Text('Select New Date',
                       style:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
@@ -256,9 +244,9 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // --- 3. Time Selector ---
+                  // --- Time Selector ---
                   if (_selectedDate != null) ...[
-                    const Text('Select a Time',
+                    const Text('Select New Time',
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
@@ -303,11 +291,12 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
 
                   const SizedBox(height: 16),
 
-                  // --- 4. Confirm Button ---
+                  // --- Confirm Button ---
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: isBookingEnabled ? _confirmBooking : null,
+                      onPressed:
+                          isRescheduleEnabled ? _confirmReschedule : null,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         textStyle: const TextStyle(
@@ -317,7 +306,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text('Confirm Appointment'),
+                      child: const Text('Confirm Reschedule'),
                     ),
                   ),
                 ],

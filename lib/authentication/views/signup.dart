@@ -2,6 +2,7 @@ import 'package:checkupplus_capstone/wrapper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../services/user_service.dart'; 
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
@@ -13,8 +14,10 @@ class Signup extends StatefulWidget {
 class _SignupState extends State<Signup> {
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
-  final TextEditingController _name =
-      TextEditingController(); // Added for the name field
+  final TextEditingController _name = TextEditingController();
+  
+  // Added UserService instance
+  final UserService _userService = UserService();
 
   bool _isPasswordVisible = false;
   bool _isLoading = false;
@@ -36,25 +39,85 @@ class _SignupState extends State<Signup> {
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // Step 1: Create Firebase Auth account
+      print('🔄 Creating Firebase Auth account...');
+      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _email.text.trim(),
         password: _password.text,
       );
-      _showSnackBar('Sign up successful!');
+
+      final user = userCredential.user;
+      if (user == null) {
+        throw Exception('User creation failed - no user returned');
+      }
+      print('✅ Firebase Auth account created: ${user.uid}');
+
+      // Step 2: Split name into first and last name
+      final nameParts = _name.text.trim().split(' ');
+      final firstName = nameParts.first;
+      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+      // Step 3: Create Firestore user profile
+      print('🔄 Creating Firestore user profile...');
+      await _userService.createUserProfile(
+        uid: user.uid,
+        email: _email.text.trim(),
+        firstName: firstName,
+        lastName: lastName,
+      );
+      print('✅ Firestore user profile created');
+
+      // Step 4: Send email verification
+      print('🔄 Sending email verification...');
+      await user.sendEmailVerification();
+      print('✅ Email verification sent');
+
+      // Step 5: Show success and navigate
+      _showSnackBar('Sign up successful! Please verify your email.');
       Get.offAll(() => const Wrapper());
+      
     } on FirebaseAuthException catch (e) {
-      _showSnackBar(e.message ?? 'Authentication error occurred.');
+      print('❌ Firebase Auth Error: ${e.code} - ${e.message}');
+      
+      String errorMessage;
+      switch (e.code) {
+        case 'weak-password':
+          errorMessage = 'Password is too weak. Use at least 6 characters.';
+          break;
+        case 'email-already-in-use':
+          errorMessage = 'An account already exists for that email.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'The email address is invalid.';
+          break;
+        case 'operation-not-allowed':
+          errorMessage = 'Email/password accounts are not enabled.';
+          break;
+        default:
+          errorMessage = e.message ?? 'Authentication error occurred.';
+      }
+      _showSnackBar(errorMessage);
+      
     } catch (e) {
+      print('❌ Signup Error: $e');
       _showSnackBar('Unexpected error: $e');
+      
+      // If Firestore creation failed but Auth succeeded,
+      // profile will be created on next login
+      print('⚠️ If Auth succeeded but Firestore failed, profile will be created on next login');
+      
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -68,7 +131,7 @@ class _SignupState extends State<Signup> {
             const SizedBox(height: 80),
             _buildLogo(),
             const SizedBox(height: 48),
-            _buildNameField(), // New name field
+            _buildNameField(),
             const SizedBox(height: 24),
             _buildEmailField(),
             const SizedBox(height: 24),
@@ -113,7 +176,7 @@ class _SignupState extends State<Signup> {
       TextField(
         controller: _name,
         keyboardType: TextInputType.text,
-        decoration: _inputDecoration('Enter your name'),
+        decoration: _inputDecoration('Enter your full name'),
       ),
     ],
   );
@@ -164,7 +227,7 @@ class _SignupState extends State<Signup> {
         ? const CircularProgressIndicator(color: Colors.white)
         : const Text(
             'Sign Up',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
           ),
   );
 
@@ -212,7 +275,7 @@ class _SignupState extends State<Signup> {
       const Text("Already have an account? "),
       GestureDetector(
         onTap: () {
-          Get.back(); // Navigate back to login
+          Get.back();
         },
         child: const Text(
           'Login',

@@ -1,7 +1,7 @@
 // widgets/speciality_grid.dart (or where you placed it)
 
 import 'package:flutter/material.dart';
-import '../screens/doctor_model.dart';
+import '../models/doctor_model.dart';
 
 class SpecialtyGrid extends StatelessWidget {
   // This takes a callback function when an item in the grid is tapped
