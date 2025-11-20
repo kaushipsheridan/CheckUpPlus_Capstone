@@ -17,40 +17,39 @@ class AppointmentService {
     required String timeSlot,
     required String serviceName,
   }) async {
-    try {
-      final userId = currentUserId;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
+    if (currentUserId == null) {
+      throw Exception('User not authenticated');
+    }
 
-      // Check if time slot is available
-      final isAvailable = await isTimeSlotAvailable(
+    try {
+      // Check if time slot is already booked (exclude canceled appointments)
+      final isBooked = await isTimeSlotBooked(
         doctorId: doctorId,
         date: date,
         timeSlot: timeSlot,
       );
 
-      if (!isAvailable) {
+      if (isBooked) {
         throw Exception('This time slot is already booked');
       }
 
-      // Create appointment model
-      final appointment = AppointmentModel(
-        userId: userId,
-        clinicId: clinicId,
-        doctorId: doctorId,
-        date: date,
-        timeSlot: timeSlot,
-        serviceName: serviceName,
-        status: 'pending',
-      );
+      final appointmentData = {
+        'userId': currentUserId,
+        'clinicId': clinicId,
+        'doctorId': doctorId,
+        'date': Timestamp.fromDate(date),
+        'timeSlot': timeSlot,
+        'serviceName': serviceName,
+        'status': 'confirmed',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
 
-      // Save to Firestore
       final docRef = await _firestore
           .collection('appointments')
-          .add(appointment.toFirestore());
+          .add(appointmentData);
 
-      print('✅ Appointment created successfully: ${docRef.id}');
+      print('✅ Appointment created: ${docRef.id}');
       return docRef.id;
     } catch (e) {
       print('❌ Error creating appointment: $e');
@@ -58,17 +57,129 @@ class AppointmentService {
     }
   }
 
-  /// Get all appointments for current user
-  Future<List<AppointmentModel>> getUserAppointments() async {
+  /// Reschedule an existing appointment (NEW)
+  Future<void> rescheduleAppointment({
+    required String appointmentId,
+    required String doctorId,
+    required DateTime newDate,
+    required String newTimeSlot,
+  }) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) {
-        throw Exception('User not authenticated');
+      // Check if the new time slot is available
+      final isBooked = await isTimeSlotBooked(
+        doctorId: doctorId,
+        date: newDate,
+        timeSlot: newTimeSlot,
+        excludeAppointmentId: appointmentId, // Don't check against itself
+      );
+
+      if (isBooked) {
+        throw Exception('This time slot is already booked');
       }
+
+      // Update the appointment
+      await _firestore
+          .collection('appointments')
+          .doc(appointmentId)
+          .update({
+        'date': Timestamp.fromDate(newDate),
+        'timeSlot': newTimeSlot,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      print('✅ Appointment $appointmentId rescheduled to ${newDate.toLocal()} at $newTimeSlot');
+    } catch (e) {
+      print('❌ Error rescheduling appointment: $e');
+      rethrow;
+    }
+  }
+
+  /// Check if a time slot is already booked (UPDATED - can exclude specific appointment)
+  Future<bool> isTimeSlotBooked({
+    required String doctorId,
+    required DateTime date,
+    required String timeSlot,
+    String? excludeAppointmentId, // NEW: Skip checking this appointment
+  }) async {
+    try {
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
       final querySnapshot = await _firestore
           .collection('appointments')
-          .where('userId', isEqualTo: userId)
+          .where('doctorId', isEqualTo: doctorId)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+          .where('timeSlot', isEqualTo: timeSlot)
+          .where('status', whereIn: ['pending', 'confirmed'])
+          .get();
+
+      // If excluding an appointment (for rescheduling), filter it out
+      if (excludeAppointmentId != null) {
+        final filteredDocs = querySnapshot.docs
+            .where((doc) => doc.id != excludeAppointmentId)
+            .toList();
+        return filteredDocs.isNotEmpty;
+      }
+
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('❌ Error checking time slot: $e');
+      return false;
+    }
+  }
+
+  /// Get booked time slots for a specific doctor on a specific date (UPDATED)
+  Future<List<String>> getBookedTimeSlots({
+    required String doctorId,
+    required DateTime date,
+    String? excludeAppointmentId, // NEW: For rescheduling
+  }) async {
+    try {
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+      final querySnapshot = await _firestore
+          .collection('appointments')
+          .where('doctorId', isEqualTo: doctorId)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+          .where('status', whereIn: ['pending', 'confirmed'])
+          .get();
+
+      var bookedSlots = querySnapshot.docs
+          .map((doc) => doc.data()['timeSlot'] as String)
+          .toList();
+
+      // If excluding an appointment (for rescheduling), remove its slot
+      if (excludeAppointmentId != null) {
+        final excludedDoc = querySnapshot.docs
+            .firstWhere((doc) => doc.id == excludeAppointmentId, 
+                orElse: () => throw Exception('Appointment not found'));
+        final excludedSlot = excludedDoc.data()['timeSlot'] as String?;
+        if (excludedSlot != null) {
+          bookedSlots.remove(excludedSlot);
+        }
+      }
+
+      print('✅ Fetched ${bookedSlots.length} booked time slots for doctor $doctorId on ${date.toLocal()}');
+      return bookedSlots;
+    } catch (e) {
+      print('❌ Error fetching booked time slots: $e');
+      return [];
+    }
+  }
+
+  /// Get all appointments for current user
+  Future<List<AppointmentModel>> getUserAppointments() async {
+    if (currentUserId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final querySnapshot = await _firestore
+          .collection('appointments')
+          .where('userId', isEqualTo: currentUserId)
           .orderBy('date', descending: true)
           .get();
 
@@ -86,58 +197,50 @@ class AppointmentService {
 
   /// Get upcoming appointments for current user
   Future<List<AppointmentModel>> getUpcomingAppointments() async {
-    try {
-      final userId = currentUserId;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
+    if (currentUserId == null) {
+      throw Exception('User not authenticated');
+    }
 
+    try {
       final now = DateTime.now();
       final querySnapshot = await _firestore
           .collection('appointments')
-          .where('userId', isEqualTo: userId)
+          .where('userId', isEqualTo: currentUserId)
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(now))
           .where('status', whereIn: ['pending', 'confirmed'])
-          .orderBy('date', descending: false)
+          .orderBy('date')
           .get();
 
-      final appointments = querySnapshot.docs
+      return querySnapshot.docs
           .map((doc) => AppointmentModel.fromFirestore(doc))
           .toList();
-
-      print('✅ Fetched ${appointments.length} upcoming appointments');
-      return appointments;
     } catch (e) {
       print('❌ Error fetching upcoming appointments: $e');
-      rethrow;
+      return [];
     }
   }
 
   /// Get past appointments for current user
   Future<List<AppointmentModel>> getPastAppointments() async {
-    try {
-      final userId = currentUserId;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
+    if (currentUserId == null) {
+      throw Exception('User not authenticated');
+    }
 
+    try {
       final now = DateTime.now();
       final querySnapshot = await _firestore
           .collection('appointments')
-          .where('userId', isEqualTo: userId)
+          .where('userId', isEqualTo: currentUserId)
           .where('date', isLessThan: Timestamp.fromDate(now))
           .orderBy('date', descending: true)
           .get();
 
-      final appointments = querySnapshot.docs
+      return querySnapshot.docs
           .map((doc) => AppointmentModel.fromFirestore(doc))
           .toList();
-
-      print('✅ Fetched ${appointments.length} past appointments');
-      return appointments;
     } catch (e) {
       print('❌ Error fetching past appointments: $e');
-      rethrow;
+      return [];
     }
   }
 
@@ -155,7 +258,7 @@ class AppointmentService {
           .toList();
     } catch (e) {
       print('❌ Error fetching clinic appointments: $e');
-      rethrow;
+      return [];
     }
   }
 
@@ -173,20 +276,19 @@ class AppointmentService {
           .toList();
     } catch (e) {
       print('❌ Error fetching doctor appointments: $e');
-      rethrow;
+      return [];
     }
   }
 
   /// Stream user appointments for real-time updates
   Stream<List<AppointmentModel>> getUserAppointmentsStream() {
-    final userId = currentUserId;
-    if (userId == null) {
-      throw Exception('User not authenticated');
+    if (currentUserId == null) {
+      return Stream.value([]);
     }
 
     return _firestore
         .collection('appointments')
-        .where('userId', isEqualTo: userId)
+        .where('userId', isEqualTo: currentUserId)
         .orderBy('date', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -215,7 +317,7 @@ class AppointmentService {
           .doc(appointmentId)
           .update(updateData);
 
-      print('✅ Appointment status updated to: $status');
+      print('✅ Appointment $appointmentId status updated to: $status');
     } catch (e) {
       print('❌ Error updating appointment status: $e');
       rethrow;
@@ -227,99 +329,16 @@ class AppointmentService {
     required String appointmentId,
     required String reason,
   }) async {
-    await updateAppointmentStatus(
-      appointmentId: appointmentId,
-      status: 'canceled',
-      cancellationReason: reason,
-    );
-  }
-
-  /// Confirm appointment
-  Future<void> confirmAppointment(String appointmentId) async {
-    await updateAppointmentStatus(
-      appointmentId: appointmentId,
-      status: 'confirmed',
-    );
-  }
-
-  /// Complete appointment
-  Future<void> completeAppointment(String appointmentId) async {
-    await updateAppointmentStatus(
-      appointmentId: appointmentId,
-      status: 'completed',
-    );
-  }
-
-  /// Get single appointment by ID
-  Future<AppointmentModel?> getAppointment(String appointmentId) async {
     try {
-      final doc = await _firestore
-          .collection('appointments')
-          .doc(appointmentId)
-          .get();
-
-      if (!doc.exists) {
-        print('⚠️ Appointment not found: $appointmentId');
-        return null;
-      }
-
-      return AppointmentModel.fromFirestore(doc);
+      await updateAppointmentStatus(
+        appointmentId: appointmentId,
+        status: 'canceled',
+        cancellationReason: reason,
+      );
+      print('✅ Appointment $appointmentId canceled');
     } catch (e) {
-      print('❌ Error fetching appointment: $e');
-      return null;
-    }
-  }
-
-  /// Check if a time slot is already booked for a doctor on a specific date
-  Future<bool> isTimeSlotAvailable({
-    required String doctorId,
-    required DateTime date,
-    required String timeSlot,
-  }) async {
-    try {
-      // Get start and end of the day
-      final startOfDay = DateTime(date.year, date.month, date.day);
-      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
-
-      final querySnapshot = await _firestore
-          .collection('appointments')
-          .where('doctorId', isEqualTo: doctorId)
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
-          .where('timeSlot', isEqualTo: timeSlot)
-          .where('status', whereIn: ['pending', 'confirmed'])
-          .get();
-
-      return querySnapshot.docs.isEmpty;
-    } catch (e) {
-      print('❌ Error checking time slot availability: $e');
-      return false;
-    }
-  }
-
-  /// Get booked time slots for a doctor on a specific date
-  Future<List<String>> getBookedTimeSlots({
-    required String doctorId,
-    required DateTime date,
-  }) async {
-    try {
-      final startOfDay = DateTime(date.year, date.month, date.day);
-      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
-
-      final querySnapshot = await _firestore
-          .collection('appointments')
-          .where('doctorId', isEqualTo: doctorId)
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
-          .where('status', whereIn: ['pending', 'confirmed'])
-          .get();
-
-      return querySnapshot.docs
-          .map((doc) => doc.data()['timeSlot'] as String)
-          .toList();
-    } catch (e) {
-      print('❌ Error fetching booked time slots: $e');
-      return [];
+      print('❌ Error canceling appointment: $e');
+      rethrow;
     }
   }
 }

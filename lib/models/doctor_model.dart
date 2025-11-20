@@ -9,7 +9,7 @@ class MedicalCategory {
   const MedicalCategory({required this.title, required this.icon});
 }
 
-/// 2. Firestore-backed Doctor Model (NEW - for real data)
+/// 2. Firestore-backed Doctor Model 
 class DoctorModel {
   final String? id;
   final String name;

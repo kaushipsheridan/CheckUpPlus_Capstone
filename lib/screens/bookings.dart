@@ -1,66 +1,14 @@
 import 'package:flutter/material.dart';
-import '../authentication/appointment_card.dart';
-import '../authentication/appointment_model.dart';
-import 'category_specialists_card.dart'; // The category grid screen
-import 'doctor_model.dart'; // Import this to avoid errors
-
-// --- Helper View for Tab Content ---
-
-/// Renders a filtered list of appointments for a single tab.
-class AppointmentListView extends StatelessWidget {
-  final AppointmentStatus filterStatus;
-  final List<Appointment> appointments;
-  final Function(String appointmentId) onCancelAppointment;
-
-  const AppointmentListView({
-    super.key,
-    required this.filterStatus,
-    required this.appointments,
-    required this.onCancelAppointment,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Filter the live data based on the required status
-    final filteredList = appointments.where((appt) {
-      if (filterStatus == AppointmentStatus.canceled) {
-        // Canceled/Missed tab needs both canceled and missed status
-        return appt.status == AppointmentStatus.canceled ||
-            appt.status == AppointmentStatus.missed;
-      }
-      return appt.status == filterStatus;
-    }).toList();
-
-    // Sort the list: upcoming = soonest first, completed/canceled = newest first
-    if (filterStatus == AppointmentStatus.upcoming) {
-      filteredList.sort((a, b) => a.date.compareTo(b.date));
-    } else {
-      filteredList.sort((a, b) => b.date.compareTo(a.date));
-    }
-
-
-    if (filteredList.isEmpty) {
-      return Center(
-        child: Text(
-          'No ${filterStatus == AppointmentStatus.canceled ? 'Canceled/Missed' : filterStatus.name} appointments.',
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: filteredList.length,
-      itemBuilder: (context, index) {
-        return AppointmentCard(
-          appointment: filteredList[index],
-          onCancel: onCancelAppointment,
-        );
-      },
-    );
-  }
-}
-
-// --- Main Screen Implementation (StatefulWidget) ---
+import 'package:checkupplus_capstone/widgets/appointment_card.dart';
+import 'package:checkupplus_capstone/models/appointment_model.dart';
+import 'package:checkupplus_capstone/services/appointment_service.dart';
+import 'package:checkupplus_capstone/services/doctor_service.dart';
+import 'package:checkupplus_capstone/services/clinic_service.dart';
+import 'package:checkupplus_capstone/models/doctor_model.dart';
+import 'package:checkupplus_capstone/models/clinic_model.dart';
+import 'package:checkupplus_capstone/screens/category_specialists_card.dart';
+import 'package:checkupplus_capstone/screens/reschedule_appointment_screen.dart'; // FIXED - No hide needed now
+ 
 
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
@@ -70,149 +18,300 @@ class BookingsScreen extends StatefulWidget {
 }
 
 class _BookingsScreenState extends State<BookingsScreen> {
-  // 1. MANAGE THE APPOINTMENT LIST STATE
-  
-  // *** THIS IS THE CHANGE ***
-  // We now start with an empty list instead of the mock data.
-  List<Appointment> currentAppointments = [];
-  // List<Appointment> currentAppointments = List.from(mockAppointments); // This was the old line
+  final AppointmentService _appointmentService = AppointmentService();
+  final DoctorService _doctorService = DoctorService();
+  final ClinicService _clinicService = ClinicService();
 
-  /// *** UPDATED METHOD ***
-  /// Handles navigation to the booking page AND receives the result.
-  void _onBookAppointmentTap(BuildContext context) async {
-    // Make it async
-    // 1. Push the category screen and WAIT for a result
-    final newAppointment = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const CategorySpecialistsScreen(),
-      ),
-    );
+  List<AppointmentModel> _appointments = [];
+  Map<String, DoctorModel> _doctorsCache = {};
+  Map<String, ClinicModel> _clinicsCache = {};
+  bool _isLoading = true;
 
-    // 2. Check if the user completed the whole flow and returned an appointment
-    if (newAppointment != null && newAppointment is Appointment) {
-      // 3. Add the new appointment to our state!
+  @override
+  void initState() {
+    super.initState();
+    _loadAppointments();
+  }
+
+  /// Load appointments from Firestore
+  Future<void> _loadAppointments() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final appointments = await _appointmentService.getUserAppointments();
+      
+      // Load doctor and clinic details for each appointment
+      for (var appointment in appointments) {
+        // Cache doctor details
+        if (!_doctorsCache.containsKey(appointment.doctorId)) {
+          final doctor = await _doctorService.getDoctor(appointment.doctorId);
+          if (doctor != null) {
+            _doctorsCache[appointment.doctorId] = doctor;
+          }
+        }
+
+        // Cache clinic details
+        if (!_clinicsCache.containsKey(appointment.clinicId)) {
+          final clinic = await _clinicService.getClinic(appointment.clinicId);
+          if (clinic != null) {
+            _clinicsCache[appointment.clinicId] = clinic;
+          }
+        }
+      }
+
       setState(() {
-        currentAppointments.add(newAppointment);
+        _appointments = appointments;
+        _isLoading = false;
       });
-
-      // 4. Show a success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Appointment successfully booked!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // 5. (Optional) Auto-switch to the "Upcoming" tab to see the new appointment
-      // This 'context' has access to the DefaultTabController
-      DefaultTabController.of(context).animateTo(0);
+    } catch (e) {
+      print('Error loading appointments: $e');
+      setState(() => _isLoading = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading appointments: $e')),
+        );
+      }
     }
   }
 
-  // 2. Method to update the status of an appointment
-  void _cancelAppointment(String appointmentId) {
-    setState(() {
-      final index =
-          currentAppointments.indexWhere((appt) => appt.id == appointmentId);
-      if (index != -1 &&
-          currentAppointments[index].status == AppointmentStatus.upcoming) {
-        // Create a new Appointment object with the CANCELED status
-        currentAppointments[index] = Appointment(
-          id: currentAppointments[index].id,
-          date: currentAppointments[index].date,
-          time: currentAppointments[index].time,
-          serviceName: currentAppointments[index].serviceName,
-          doctorName: currentAppointments[index].doctorName,
-          status: AppointmentStatus.canceled,
-          cancellationReason: 'Canceled by user.', // Add a default reason
-        );
-        // Show confirmation to the user
+  /// Cancel an appointment
+  Future<void> _cancelAppointment(String appointmentId, String reason) async {
+    try {
+      await _appointmentService.cancelAppointment(
+        appointmentId: appointmentId,
+        reason: reason,
+      );
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Appointment successfully canceled.')),
+          const SnackBar(
+            content: Text('Appointment cancelled successfully'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        
+        // Reload appointments
+        _loadAppointments();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error cancelling appointment: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
-    });
+    }
+  }
+
+  /// Show cancel confirmation dialog
+  Future<void> _showCancelDialog(String appointmentId) async {
+    final reasonController = TextEditingController();
+    
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Appointment'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Are you sure you want to cancel this appointment?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Reason (optional)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Keep Appointment'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _cancelAppointment(
+                appointmentId,
+                reasonController.text.isEmpty 
+                    ? 'Cancelled by user' 
+                    : reasonController.text,
+              );
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Cancel Appointment'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Navigate to reschedule screen
+  Future<void> _rescheduleAppointment(AppointmentModel appointment) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => RescheduleAppointmentScreen(
+          appointment: appointment,
+        ),
+      ),
+    );
+
+    // Reload appointments if rescheduling was successful
+    if (result == true) {
+      _loadAppointments();
+    }
+  }
+
+  /// Filter appointments by status
+  List<AppointmentModel> _filterAppointments(String status) {
+    switch (status) {
+      case 'upcoming':
+        return _appointments
+            .where((apt) => apt.isUpcoming)
+            .toList();
+      case 'completed':
+        return _appointments
+            .where((apt) => apt.status == 'completed')
+            .toList();
+      case 'canceled':
+        return _appointments
+            .where((apt) => apt.status == 'canceled')
+            .toList();
+      default:
+        return _appointments;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Use DefaultTabController to manage the three tabs
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('My Appointments'),
-          elevation: 0,
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-
-          // Custom AppBar bottom to include the button above the tabs
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(100.0), // Height for button + tabs
-            child: Column(
-              children: [
-                // Book an Appointment Button
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      // *** Use the updated method ***
-                      onPressed: () => _onBookAppointmentTap(context),
-                      icon: const Icon(Icons.add_circle_outline),
-                      label: const Text('Book an Appointment'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Tab Bar
-                const TabBar(
-                  indicatorColor: Colors.blue,
-                  labelColor: Colors.blue,
-                  unselectedLabelColor: Colors.black54,
-                  tabs: [
-                    Tab(text: 'Upcoming'),
-                    Tab(text: 'Completed'),
-                    Tab(text: 'Canceled/Missed'),
-                  ],
-                ),
-              ],
-            ),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Upcoming'),
+              Tab(text: 'Completed'),
+              Tab(text: 'Canceled'),
+            ],
           ),
         ),
-
-        // Tab Bar View - Pass the stateful data and the callback
-        body: TabBarView(
-          children: [
-            // Upcoming Tab Content
-            AppointmentListView(
-              filterStatus: AppointmentStatus.upcoming,
-              appointments: currentAppointments,
-              onCancelAppointment: _cancelAppointment,
-            ),
-
-            // Completed Tab Content
-            AppointmentListView(
-              filterStatus: AppointmentStatus.completed,
-              appointments: currentAppointments,
-              onCancelAppointment: _cancelAppointment,
-            ),
-
-            // Canceled/Missed Tab Content
-            AppointmentListView(
-              filterStatus: AppointmentStatus.canceled,
-              appointments: currentAppointments,
-              onCancelAppointment: _cancelAppointment,
-            ),
-          ],
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : TabBarView(
+                children: [
+                  // Upcoming Tab
+                  AppointmentListView(
+                    appointments: _filterAppointments('upcoming'),
+                    doctorsCache: _doctorsCache,
+                    clinicsCache: _clinicsCache,
+                    onCancelAppointment: _showCancelDialog,
+                    onRescheduleAppointment: _rescheduleAppointment,
+                    emptyMessage: 'No upcoming appointments',
+                  ),
+                  // Completed Tab
+                  AppointmentListView(
+                    appointments: _filterAppointments('completed'),
+                    doctorsCache: _doctorsCache,
+                    clinicsCache: _clinicsCache,
+                    onCancelAppointment: null,
+                    onRescheduleAppointment: null,
+                    emptyMessage: 'No completed appointments',
+                  ),
+                  // Canceled Tab
+                  AppointmentListView(
+                    appointments: _filterAppointments('canceled'),
+                    doctorsCache: _doctorsCache,
+                    clinicsCache: _clinicsCache,
+                    onCancelAppointment: null,
+                    onRescheduleAppointment: null,
+                    emptyMessage: 'No canceled appointments',
+                  ),
+                ],
+              ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const CategorySpecialistsScreen(),
+              ),
+            );
+            _loadAppointments();
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('Book Appointment'),
         ),
       ),
     );
   }
 }
 
+// --- Helper View for Tab Content ---
+
+class AppointmentListView extends StatelessWidget {
+  final List<AppointmentModel> appointments;
+  final Map<String, DoctorModel> doctorsCache;
+  final Map<String, ClinicModel> clinicsCache;
+  final Function(String appointmentId)? onCancelAppointment;
+  final Function(AppointmentModel appointment)? onRescheduleAppointment;
+  final String emptyMessage;
+
+  const AppointmentListView({
+    super.key,
+    required this.appointments,
+    required this.doctorsCache,
+    required this.clinicsCache,
+    this.onCancelAppointment,
+    this.onRescheduleAppointment,
+    required this.emptyMessage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (appointments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_busy, size: 80, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              emptyMessage,
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: appointments.length,
+      itemBuilder: (context, index) {
+        final appointment = appointments[index];
+        final doctor = doctorsCache[appointment.doctorId];
+        final clinic = clinicsCache[appointment.clinicId];
+
+        return AppointmentCard(
+          appointment: appointment,
+          doctorName: doctor?.name ?? 'Unknown Doctor',
+          clinicName: clinic?.name ?? 'Unknown Clinic',
+          clinicAddress: clinic?.address ?? '',
+          onCancel: onCancelAppointment != null
+              ? () => onCancelAppointment!(appointment.id!)
+              : null,
+          onReschedule: onRescheduleAppointment != null
+              ? () => onRescheduleAppointment!(appointment)
+              : null,
+        );
+      },
+    );
+  }
+}

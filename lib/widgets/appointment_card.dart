@@ -7,6 +7,7 @@ class AppointmentCard extends StatelessWidget {
   final String clinicName;
   final String clinicAddress;
   final VoidCallback? onCancel;
+  final VoidCallback? onReschedule; // NEW
 
   const AppointmentCard({
     super.key,
@@ -15,6 +16,7 @@ class AppointmentCard extends StatelessWidget {
     required this.clinicName,
     required this.clinicAddress,
     this.onCancel,
+    this.onReschedule, // NEW
   });
 
   Color _getStatusColor() {
@@ -195,21 +197,42 @@ class AppointmentCard extends StatelessWidget {
               ),
             ],
 
-            // Cancel Button
-            if (onCancel != null && appointment.isUpcoming) ...[
+            // Action Buttons (NEW - Reschedule + Cancel)
+            if (appointment.isUpcoming) ...[
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onCancel,
-                  icon: const Icon(Icons.cancel_outlined),
-                  label: const Text('Cancel Appointment'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
+              Row(
+                children: [
+                  // Reschedule Button
+                  if (onReschedule != null)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onReschedule,
+                        icon: const Icon(Icons.edit_calendar),
+                        label: const Text('Reschedule'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                          side: const BorderSide(color: Colors.blue),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  if (onReschedule != null && onCancel != null)
+                    const SizedBox(width: 12),
+                  // Cancel Button
+                  if (onCancel != null)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onCancel,
+                        icon: const Icon(Icons.cancel_outlined),
+                        label: const Text('Cancel'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ],
